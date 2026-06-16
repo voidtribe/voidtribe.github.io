@@ -111,10 +111,11 @@ void main(){
 
     vec3 rdCam = normalize(vec3(uv, -1.2));
     vec3 ld    = normalize(vec3(1., 1.5, 2.));
-    vec3 refl  = reflect(rd, n);
+    /* Keep webcam env-map in camera space so it does not rotate with object. */
+    vec3 reflCam = reflect(rdCam, nCam);
 
     float fresnel = pow(1. - max(dot(nCam, -rdCam), 0.), 3.);
-    vec3  envCol  = sampleEnv(refl);
+    vec3  envCol  = sampleEnv(reflCam);
 
     vec3  h    = normalize(ld - rdCam);
     float spec = pow(max(dot(nCam, h), 0.), 140.);
