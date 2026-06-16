@@ -1,0 +1,65 @@
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #060310;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    font-family: 'Courier New', monospace;
+    cursor: grab;
+  }
+  body.dragging { cursor: grabbing; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #overlay {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    pointer-events: none;
+    user-select: none;
+  }
+  #title {
+    font-size: clamp(1.2rem, 3vw, 1.8rem);
+    font-weight: 400;
+    letter-spacing: 0.35em;
+    color: rgba(255,255,255,0.85);
+    text-transform: lowercase;
+  }
+  #subtitle {
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    color: rgba(180,140,255,0.45);
+    margin-top: 0.4rem;
+    text-transform: uppercase;
+  }
+  #cam-status {
+    position: fixed;
+    top: 1.2rem;
+    right: 1.4rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: rgba(255,255,255,0.2);
+    text-transform: uppercase;
+  }
+  #cam-btn {
+    position: fixed;
+    top: 1rem;
+    left: 1.4rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    color: rgba(180,140,255,0.5);
+    background: transparent;
+    border: 1px solid rgba(180,140,255,0.2);
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  #cam-btn:hover {
+    color: rgba(200,160,255,0.9);
+    border-color: rgba(200,160,255,0.5);
+  }
+
+#v { display: none; }
