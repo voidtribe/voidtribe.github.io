@@ -256,6 +256,7 @@ function loop(ms){
   gl.uniform1f(tLoc, ms * 0.001);
   gl.uniform2f(rotLoc, rotX, rotY);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
