@@ -26,7 +26,7 @@
     text-transform: lowercase;
   }
   #subtitle {
-    font-size: 0.65rem;
+    font-size: 1.0rem;
     letter-spacing: 0.25em;
     color: rgba(180,140,255,0.45);
     margin-top: 0.4rem;
