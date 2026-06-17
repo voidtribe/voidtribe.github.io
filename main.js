@@ -167,11 +167,43 @@ function makeTex(useFallback = true){
 
   return t;
 }
-let texFront = makeTex(true);    /* GPU is reading this */
-let texBack  = makeTex(false);   /* we write webcam frames into this */
-let newFrameReady = false;
+let texFront = makeTex(true);    /* GPU reads this */
+let texBack  = makeTex(true);    /* CPU writes new webcam frames here */
+let lastVideoTime = -1;
+let pendingVideoFrame = false;
+let latestPresentedFrames = -1;
+let camTexturesAllocated = false;
 
 let camReady = false;
+
+function resetCamTextureToFallback(tex){
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,
+    gl.RGBA,
+    FALLBACK_TEX_SIZE,
+    FALLBACK_TEX_SIZE,
+    0,
+    gl.RGBA,
+    gl.UNSIGNED_BYTE,
+    createFallbackTextureData()
+  );
+}
+
+function allocateCamTexturesForVideo(){
+  const w = video.videoWidth | 0;
+  const h = video.videoHeight | 0;
+  if(w <= 0 || h <= 0) return false;
+
+  gl.bindTexture(gl.TEXTURE_2D, texFront);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.bindTexture(gl.TEXTURE_2D, texBack);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+  camTexturesAllocated = true;
+  return true;
+}
 
 async function startCam(){
   try {
@@ -180,7 +212,11 @@ async function startCam(){
     video.srcObject = stream;
     video.onloadedmetadata = () => {
       video.play();
+      allocateCamTexturesForVideo();
       camReady = true;
+      lastVideoTime = -1;
+      pendingVideoFrame = false;
+      latestPresentedFrames = -1;
       gl.uniform1i(hasCamLoc, 1);
       scheduleFrameUpload();
       status.textContent = 'cam on';
@@ -198,21 +234,14 @@ function stopCam(){
   }
 
   camReady = false;
-  newFrameReady = false;
+  lastVideoTime = -1;
+  pendingVideoFrame = false;
+  latestPresentedFrames = -1;
+  camTexturesAllocated = false;
 
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, texFront);
-  gl.texImage2D(
-    gl.TEXTURE_2D,
-    0,
-    gl.RGBA,
-    FALLBACK_TEX_SIZE,
-    FALLBACK_TEX_SIZE,
-    0,
-    gl.RGBA,
-    gl.UNSIGNED_BYTE,
-    createFallbackTextureData()
-  );
+  resetCamTextureToFallback(texFront);
+  resetCamTextureToFallback(texBack);
 
   gl.uniform1i(hasCamLoc, 0);
 
@@ -221,34 +250,47 @@ function stopCam(){
 }
 
 function scheduleFrameUpload(){
-  if(!camReady) return;
-  if(video.requestVideoFrameCallback){
-    video.requestVideoFrameCallback(() => {
-      if(!camReady) return;
-      /* write into back buffer only */
-      gl.bindTexture(gl.TEXTURE_2D, texBack);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
-      newFrameReady = true;
-      scheduleFrameUpload();
-    });
-  }
+  if(!camReady || !video.requestVideoFrameCallback) return;
+
+  video.requestVideoFrameCallback((_, metadata) => {
+    if(!camReady) return;
+
+    if(metadata && typeof metadata.presentedFrames === 'number'){
+      if(metadata.presentedFrames > latestPresentedFrames){
+        latestPresentedFrames = metadata.presentedFrames;
+        pendingVideoFrame = true;
+      }
+    } else {
+      pendingVideoFrame = true;
+    }
+
+    scheduleFrameUpload();
+  });
 }
 
 function loop(ms){
   rotX += (targetRotX - rotX) * 0.08;
   rotY += (targetRotY - rotY) * 0.08;
 
-  /* fallback for browsers without requestVideoFrameCallback */
-  if(camReady && !video.requestVideoFrameCallback && video.readyState >= 2){
-    gl.bindTexture(gl.TEXTURE_2D, texBack);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
-    newFrameReady = true;
-  }
+  /* Desktop-stable path: mark new frames via rVFC, then upload+swap in RAF. */
+  if(camReady && video.readyState >= 2){
+    if(!video.requestVideoFrameCallback && video.currentTime !== lastVideoTime){
+      lastVideoTime = video.currentTime;
+      pendingVideoFrame = true;
+    }
 
-  /* swap only after previous draw is done — before this draw starts */
-  if(newFrameReady){
-    [texFront, texBack] = [texBack, texFront];
-    newFrameReady = false;
+    if(pendingVideoFrame){
+      if(!camTexturesAllocated){
+        allocateCamTexturesForVideo();
+      }
+
+      if(camTexturesAllocated){
+        pendingVideoFrame = false;
+        gl.bindTexture(gl.TEXTURE_2D, texBack);
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video);
+        [texFront, texBack] = [texBack, texFront];
+      }
+    }
   }
 
   gl.activeTexture(gl.TEXTURE0);
