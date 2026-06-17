@@ -285,7 +285,7 @@ function loop(ms){
 
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, texFront);
-  gl.uniform1f(tLoc, ms * 0.001);
+  gl.uniform1f(tLoc, ms * 0.0005);
   gl.uniform2f(rotLoc, rotX, rotY);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
