@@ -130,7 +130,9 @@ function createFallbackTextureData(size = FALLBACK_TEX_SIZE){
   return data;
 }
 
-function makeTex(useFallback = true){
+const FALLBACK_TEX_DATA = createFallbackTextureData();
+
+function makeTex(){
   const t = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, t);
 
@@ -139,36 +141,22 @@ function makeTex(useFallback = true){
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
-  if(useFallback){
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      FALLBACK_TEX_SIZE,
-      FALLBACK_TEX_SIZE,
-      0,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      createFallbackTextureData()
-    );
-  } else {
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      1,
-      1,
-      0,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      new Uint8Array([10, 5, 20, 255])
-    );
-  }
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,
+    gl.RGBA,
+    FALLBACK_TEX_SIZE,
+    FALLBACK_TEX_SIZE,
+    0,
+    gl.RGBA,
+    gl.UNSIGNED_BYTE,
+    FALLBACK_TEX_DATA
+  );
 
   return t;
 }
-let texFront = makeTex(true);    /* GPU reads this */
-let texBack  = makeTex(true);    /* CPU writes new webcam frames here */
+let texFront = makeTex();    /* GPU reads this */
+let texBack  = makeTex();    /* CPU writes new webcam frames here */
 let lastVideoTime = -1;
 let pendingVideoFrame = false;
 let latestPresentedFrames = -1;
@@ -187,8 +175,14 @@ function resetCamTextureToFallback(tex){
     0,
     gl.RGBA,
     gl.UNSIGNED_BYTE,
-    createFallbackTextureData()
+    FALLBACK_TEX_DATA
   );
+}
+
+function resetCamFrameState(){
+  lastVideoTime = -1;
+  pendingVideoFrame = false;
+  latestPresentedFrames = -1;
 }
 
 function allocateCamTexturesForVideo(){
@@ -210,13 +204,11 @@ async function startCam(){
     const stream = await navigator.mediaDevices.getUserMedia(
       { video: { facingMode: 'user', width: { ideal: 640 } }, audio: false });
     video.srcObject = stream;
-    video.onloadedmetadata = () => {
-      video.play();
+    video.onloadedmetadata = async () => {
+      await video.play().catch(() => {});
       allocateCamTexturesForVideo();
       camReady = true;
-      lastVideoTime = -1;
-      pendingVideoFrame = false;
-      latestPresentedFrames = -1;
+      resetCamFrameState();
       gl.uniform1i(hasCamLoc, 1);
       scheduleFrameUpload();
       status.textContent = 'cam on';
@@ -234,9 +226,7 @@ function stopCam(){
   }
 
   camReady = false;
-  lastVideoTime = -1;
-  pendingVideoFrame = false;
-  latestPresentedFrames = -1;
+  resetCamFrameState();
   camTexturesAllocated = false;
 
   gl.activeTexture(gl.TEXTURE0);
