@@ -77,7 +77,8 @@ vec3 applyInvRot(vec3 v){
 }
 
 vec3 sampleEnv(vec3 dir){
-  float u = atan(dir.z, dir.x) / (2.*3.14159265) + 0.5;
+  /* Map forward (+Z) to center U=0.5 and keep mirrored left-right feel. */
+  float u = atan(-dir.x, dir.z) / (2.*3.14159265) + 0.5;
   float v = -dir.y * 0.5 + 0.5;
   return texture(cam, vec2(u, v)).rgb;
 }
