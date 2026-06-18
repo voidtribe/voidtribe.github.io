@@ -115,16 +115,20 @@ void main(){
     vec3  envCol  = sampleEnv(refl);
 
     vec3  h    = normalize(ld - rd);
-    float spec = pow(max(dot(n, h), 0.), 140.);
+    float spec = pow(max(dot(n, h), 0.), 30.0);
 
     vec3 tint   = vec3(0.38, 0.12, 0.78);
     vec3 chrome = mix(envCol * 0.88, tint, 0.10)
                 + vec3(spec * 0.95)
                 + tint * fresnel * 0.65;
 
+    float depthShade = mix(1.0, 0.162, smoothstep(2.0, 5.0, d));
+    chrome *= depthShade;
+
     float fog = exp(-d * 0.07);
+    fog = 1.0;
     col = vec4(mix(bg, chrome, fog), 1.);
-  } else {
+    } else {
     col = vec4(bg, 1.);
   }
 }`
