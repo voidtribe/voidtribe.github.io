@@ -110,7 +110,7 @@ void main() {
   col += fireColor * fireShape * 0.48;
   col += mix(fireAccent, whiteGlow, 0.65) * fireShape * 0.10;
 
-  float sector = TAU / 9.0;
+  float sector = TAU / 8.0;
 
   float sectorIndex = floor((a + PI) / sector);
   float headAngle = (sectorIndex + 0.5) * sector - PI;
