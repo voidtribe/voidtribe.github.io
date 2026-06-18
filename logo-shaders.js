@@ -50,30 +50,18 @@ float fbm(vec2 p) {
   return v;
 }
 
-float circleSdf(vec2 p, float radius) {
-  return length(p) - radius;
-}
-
-float angleDiff(float a, float b) {
-  return atan(sin(a - b), cos(a - b));
-}
-
 vec3 palette(vec2 p, float angle) {
   vec3 purple = vec3(0.56, 0.24, 1.00);
   vec3 blue   = vec3(0.22, 0.56, 1.00);
   vec3 cyan   = vec3(0.48, 0.95, 1.00);
 
   float xMix = smoothstep(-0.75, 0.75, p.x);
-  vec3 c = mix(purple, cyan, xMix);
   float angular = sin(angle * 2.0) * 0.5 + 0.5;
-  c = mix(c, blue, angular * 0.20);
-
-  return c;
+  return mix(mix(purple, cyan, xMix), blue, angular * 0.20);
 }
 
 void main() {
-  vec2 uv = vUv * 2.0 - vec2(1.0,0.80); // = vUv * 2.0 - 1.0;
-  uv *= 0.75; // 78
+  vec2 uv = (vUv * 2.0 - vec2(1.0, 0.80)) * 0.75;
   uv.x *= uResolution.x / uResolution.y;
 
   vec2 p = uv;
@@ -86,14 +74,13 @@ void main() {
 
   float r = length(p);
   float a = atan(p.y, p.x);
-  float aStatic = atan(pStatic.y, pStatic.x);
 
   vec3 col = vec3(0.0);
-  vec3 accent = palette(pStatic, aStatic);
+  vec3 accent = palette(pStatic, atan(pStatic.y, pStatic.x));
   vec3 whiteGlow = vec3(0.87, 0.92, 1.0);
 
   float coreRadius = 0.255;
-  float dCore = circleSdf(p, coreRadius);
+  float dCore = length(p) - coreRadius;
   float px = 2.0 / max(uResolution.y, 1.0);
   float innerLineWidth = 5.0 * px;
   float aa = px * 1.25;
@@ -106,12 +93,11 @@ void main() {
   col += accent * coreOuterGlow * 0.34;
   col += mix(accent, whiteGlow, 0.06) * coreRing * 0.62;
 
-  float headCount = 7.0;
-  float sector = TAU / headCount;
+  float sector = TAU / 7.0;
 
   float sectorIndex = floor((a + PI) / sector);
   float headAngle = (sectorIndex + 0.5) * sector - PI;
-  float localA = angleDiff(a, headAngle);
+  float localA = atan(sin(a - headAngle), cos(a - headAngle));
 
   float innerStart = coreRadius + 0.045;
   float armOuterEnd = 0.56;
@@ -128,41 +114,34 @@ void main() {
   float wave = sin((r - innerStart) * waveFreq + phase) * waveAmp;
 
   float t = smoothstep(innerStart, armOuterEnd, r);
-  float minGap  = 0.146;
-  float armPath = mix(armSpread, minGap, t * t) - sin(t * (PI + 1.0)) * 0.130;
+  float armPath = mix(armSpread, 0.146, t * t) - sin(t * (PI + 1.0)) * 0.130;
 
-  float leftArmCenter  = -armPath - wave;
-  float rightArmCenter =  armPath + wave;
+  vec2 armCenters = vec2(-armPath - wave, armPath + wave);
 
   float armWidth = 0.005 + sin(t * PI) * 0.015;
   float organic = fbm(vec2(localA * 14.0, r * 8.5) + uTime * 0.03);
   float edgeJitter = (organic - 0.5) * 0.008;
 
-  float leftDist = abs(localA - leftArmCenter);
-  float rightDist = abs(localA - rightArmCenter);
+  vec2 armDist = abs(vec2(localA) - armCenters);
 
   float armRange =
     smoothstep(innerStart - 0.020, innerStart + 0.030, r) *
     smoothstep(armOuterEnd + 0.012, armOuterEnd - 0.020, r);
 
-  float leftArm  = smoothstep(armWidth * 2.5 + edgeJitter, armWidth * 0.5, leftDist)  * armRange;
-  float rightArm = smoothstep(armWidth * 2.5 + edgeJitter, armWidth * 0.5, rightDist) * armRange;
+  vec2 armBodyPair = smoothstep(armWidth * 2.5 + edgeJitter, armWidth * 0.5, armDist) * armRange;
+  vec2 armGlowPair = smoothstep(armWidth * 7.0, armWidth * 0.4, armDist) * armRange;
 
-  float leftGlow  = smoothstep(armWidth * 7.0, armWidth * 0.4, leftDist)  * armRange;
-  float rightGlow = smoothstep(armWidth * 7.0, armWidth * 0.4, rightDist) * armRange;
-
-  float armBody = max(leftArm, rightArm);
-  float armGlow = max(leftGlow, rightGlow);
+  float armBody = max(armBodyPair.x, armBodyPair.y);
+  float armGlow = max(armGlowPair.x, armGlowPair.y);
 
   col += accent * armGlow * 0.24;
   col += mix(accent, whiteGlow, 0.62) * armBody * 0.74;
 
   vec2 headPos = vec2(cos(headAngle), sin(headAngle)) * headRadiusFromCenter;
   float dHead = length(p - headPos);
-  float headRadius = 0.040;
 
-  float headBody = smoothstep(headRadius + 0.010, headRadius - 0.002, dHead);
-  float headGlow = smoothstep(headRadius + 0.090, headRadius - 0.002, dHead);
+  float headBody = smoothstep(0.050, 0.038, dHead);
+  float headGlow = smoothstep(0.130, 0.038, dHead);
 
   col += accent * headGlow * 0.20;
   col += mix(accent, whiteGlow, 0.76) * headBody * 0.88;
@@ -174,8 +153,7 @@ void main() {
   col += (armBody + headBody + coreRing) * (grain - 0.5) * 0.10;
 
   float voidMask = smoothstep(coreRadius + 0.006, coreRadius - 0.006, r);
-  vec3 coreColor = vec3(0.000, 0.002, 0.010);
-  col = mix(col, coreColor, voidMask);
+  col = mix(col, vec3(0.000, 0.002, 0.010), voidMask);
   col = mix(col, mix(accent, whiteGlow, 0.10), innerVoidLine);
 
   col = 1.0 - exp(-col * 1.35);

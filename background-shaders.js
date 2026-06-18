@@ -103,32 +103,23 @@ void main(){
   vec3 bg = vec3(0.024, 0.012, 0.06);
 
   if(hit){
-    vec3 p = ro + rd*d;
     /* normal: compute in object space, rotate back to camera space */
-    vec3 n = applyRot(normal(applyInvRot(p)));
+    vec3 n = applyRot(normal(applyInvRot(ro + rd*d)));
 
     vec3 ld   = normalize(vec3(1., 1.5, 2.));
-    /* reflection directly in camera space — env map is fixed */
-    vec3 refl = reflect(rd, n);
-
     float fresnel = pow(1. - max(dot(n, -rd), 0.), 3.);
-    vec3  envCol  = sampleEnv(refl);
-
-    vec3  h    = normalize(ld - rd);
-    float spec = pow(max(dot(n, h), 0.), 30.0);
+    /* reflection directly in camera space - env map is fixed */
+    vec3  envCol  = sampleEnv(reflect(rd, n));
+    float spec = pow(max(dot(n, normalize(ld - rd)), 0.), 30.0);
 
     vec3 tint   = vec3(0.38, 0.12, 0.78);
     vec3 chrome = mix(envCol * 0.88, tint, 0.10)
                 + vec3(spec * 0.95)
                 + tint * fresnel * 0.65;
 
-    float depthShade = mix(1.0, 0.162, smoothstep(2.0, 5.0, d));
-    chrome *= depthShade;
-
-    float fog = exp(-d * 0.07);
-    fog = 1.0;
-    col = vec4(mix(bg, chrome, fog), 1.);
-    } else {
+    chrome *= mix(1.0, 0.162, smoothstep(2.0, 5.0, d));
+    col = vec4(chrome, 1.);
+  } else {
     col = vec4(bg, 1.);
   }
 }`
