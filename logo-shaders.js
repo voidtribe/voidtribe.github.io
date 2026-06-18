@@ -72,8 +72,8 @@ vec3 palette(vec2 p, float angle) {
 }
 
 void main() {
-  vec2 uv = vUv * 2.0 - 1.0;
-  uv *= 0.78;
+  vec2 uv = vUv * 2.0 - vec2(1.0,0.80); // = vUv * 2.0 - 1.0;
+  uv *= 0.75; // 78
   uv.x *= uResolution.x / uResolution.y;
 
   vec2 p = uv;
@@ -106,7 +106,7 @@ void main() {
   col += accent * coreOuterGlow * 0.34;
   col += mix(accent, whiteGlow, 0.06) * coreRing * 0.62;
 
-  float headCount = 9.0;
+  float headCount = 7.0;
   float sector = TAU / headCount;
 
   float sectorIndex = floor((a + PI) / sector);
