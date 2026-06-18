@@ -42,7 +42,7 @@ float noise(vec2 p) {
 float fbm(vec2 p) {
   float v = 0.0;
   float a = 0.5;
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 4; i++) {
     v += noise(p) * a;
     p *= 2.03;
     a *= 0.5;
@@ -149,7 +149,7 @@ void main() {
   float halo = exp(-abs(r - (coreRadius + 0.015)) * 18.0) * 0.16;
   col += accent * halo * 0.18;
 
-  float grain = fbm(p * 92.0 + uTime * 0.08);
+  float grain = noise(p * 92.0 + uTime * 0.08);
   col += (armBody + headBody + coreRing) * (grain - 0.5) * 0.10;
 
   float voidMask = smoothstep(coreRadius + 0.006, coreRadius - 0.006, r);

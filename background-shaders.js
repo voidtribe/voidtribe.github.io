@@ -29,33 +29,42 @@ float noise(float x){
 
 float scene(vec3 p){
   float d = 1e9;
-  for(int i = 0; i < 10; i++){
+  float t025 = t * 0.25;
+  float t06  = t * 0.6;
+  float t037 = t * 0.37;
+  float t029 = t * 0.29;
+  float t041 = t * 0.41;
+  float t11  = t * 1.1;
+  float t05  = t * 0.5;
+  for(int i = 0; i < 9; i++){
     float fi  = float(i);
-    float ang = fi*0.6283 + t*0.25;
-    float rad = 1.1 + sin(t*0.6 + fi*0.9)*0.25;
-    float nx = noise(t*0.37 + fi*7.13) - 0.5;
-    float ny = noise(t*0.29 + fi*3.71) - 0.5;
-    float nz = noise(t*0.41 + fi*5.53) - 0.5;
+    float ang = fi*0.6283 + t025;
+    float rad = 1.1 + sin(t06 + fi*0.9)*0.25;
+    float nx = noise(t037 + fi*7.13) - 0.5;
+    float ny = noise(t029 + fi*3.71) - 0.5;
+    float nz = noise(t041 + fi*5.53) - 0.5;
     vec3 sp = vec3(
       cos(ang)*rad + nx*0.55,
       sin(ang*1.3)*0.45 + ny*0.45,
       sin(ang)*rad + nz*0.35
     );
-    float rs = 0.24 + sin(t*1.1 + fi*2.3)*0.05 + noise(t*0.5+fi)*0.06;
+    float rs = 0.24 + sin(t11 + fi*2.3)*0.05 + noise(t05 + fi)*0.06;
     d = smin(d, sphere(p - sp, rs), 0.52);
   }
-  float core = 0.50 + sin(t*0.5)*0.07 + noise(t*0.8)*0.05;
+  float core = 0.50 + sin(t05)*0.07 + noise(t*0.8)*0.05;
   d = smin(d, sphere(p, core), 0.45);
   return d;
 }
 
 vec3 normal(vec3 p){
-  float e = 0.001;
-  return normalize(vec3(
-    scene(p+vec3(e,0,0)) - scene(p-vec3(e,0,0)),
-    scene(p+vec3(0,e,0)) - scene(p-vec3(0,e,0)),
-    scene(p+vec3(0,0,e)) - scene(p-vec3(0,0,e))
-  ));
+  float e = 0.0016;
+  vec2 k = vec2(1., -1.);
+  return normalize(
+    k.xyy * scene(p + k.xyy * e) +
+    k.yyx * scene(p + k.yyx * e) +
+    k.yxy * scene(p + k.yxy * e) +
+    k.xxx * scene(p + k.xxx * e)
+  );
 }
 
 /* rotate vector by mouse-driven angles */
@@ -93,10 +102,10 @@ void main(){
      env-map stays naturally in camera space. */
   float d   = 0.;
   bool  hit = false;
-  for(int i = 0; i < 90; i++){
+  for(int i = 0; i < 72; i++){
     float s = scene(applyInvRot(ro + rd*d));
-    if(s < 0.001){ hit = true; break; }
-    if(d > 12.) break;
+    if(s < 0.0012){ hit = true; break; }
+    if(d > 10.5) break;
     d += s;
   }
 
