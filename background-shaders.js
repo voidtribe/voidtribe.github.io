@@ -86,8 +86,10 @@ vec3 applyInvRot(vec3 v){
 }
 
 vec3 sampleEnv(vec3 dir){
-  /* Map forward (+Z) to center U=0.5 and keep mirrored left-right feel. */
-  float u = atan(-dir.x, dir.z) / (2.*3.14159265) + 0.5;
+  /* Matcap-style mapping: use the normal's x/y components directly as UV.
+     The full front hemisphere maps to the full texture (no zoom),
+     and poles of the texture sit at the edges, outside the visible blob. */
+  float u = dir.x * 0.5 + 0.5;
   float v = -dir.y * 0.5 + 0.5;
   return texture(cam, vec2(u, v)).rgb;
 }
@@ -117,13 +119,15 @@ void main(){
 
     vec3 ld   = normalize(vec3(1., 1.5, 2.));
     float fresnel = pow(1. - max(dot(n, -rd), 0.), 3.);
-    /* reflection directly in camera space - env map is fixed */
-    vec3  envCol  = sampleEnv(reflect(rd, n));
+    /* Sample env using the surface normal: poles of the texture land exactly
+       at the top/bottom of the blob (n.y = ±1) which are never visible
+       from the front-facing camera, eliminating convergence artifacts. */
+    vec3  envCol  = sampleEnv(n);
     float spec = pow(max(dot(n, normalize(ld - rd)), 0.), 30.0);
 
     vec3 tint   = vec3(0.38, 0.12, 0.78);
     vec3 chrome = mix(envCol * 0.88, tint, 0.10)
-                + vec3(spec * 0.95)
+                + vec3(spec * 0.995)
                 + tint * fresnel * 0.65;
 
     chrome *= mix(1.0, 0.162, smoothstep(2.0, 5.0, d));
