@@ -87,8 +87,8 @@ void main() {
     smoothstep(coreRadius + 0.010, coreRadius + 0.070, r) *
     smoothstep(coreRadius + 0.240, coreRadius + 0.060, r);
 
-  float fireFlow = uTime * 0.07;
-  float fireDrift = uTime * 0.03;
+  float fireFlow = uTime * 0.14;
+  float fireDrift = uTime * 0.06;
   float fireBase = noise(vec2(a * 5.0 + fireFlow, r * 22.0 - fireFlow * 0.65));
   float fireDetail = noise(vec2(a * 11.0 - fireFlow * 0.35, r * 46.0 + fireFlow * 0.95 + fireDrift));
   float fireTongue = pow(max(0.0, sin(a * 9.0 - fireFlow * 0.9) * 0.5 + 0.5), 1.6);
@@ -110,7 +110,7 @@ void main() {
   col += fireColor * fireShape * 0.48;
   col += mix(fireAccent, whiteGlow, 0.65) * fireShape * 0.10;
 
-  float sector = TAU / 7.0;
+  float sector = TAU / 9.0;
 
   float sectorIndex = floor((a + PI) / sector);
   float headAngle = (sectorIndex + 0.5) * sector - PI;
