@@ -51,13 +51,13 @@ float fbm(vec2 p) {
 }
 
 vec3 palette(vec2 p, float angle) {
-  vec3 purple = vec3(0.56, 0.24, 1.00);
+  vec3 purple = vec3(0.68, 0.20, 1.00);
   vec3 blue   = vec3(0.22, 0.56, 1.00);
   vec3 cyan   = vec3(0.48, 0.95, 1.00);
 
   float xMix = smoothstep(-0.75, 0.75, p.x);
   float angular = sin(angle * 2.0) * 0.5 + 0.5;
-  return mix(mix(purple, cyan, xMix), blue, angular * 0.20);
+  return mix(mix(purple, cyan, xMix), blue, angular * 0.14);
 }
 
 void main() {
@@ -89,9 +89,32 @@ void main() {
     (1.0 - smoothstep(-aa, aa, dCore));
   float coreRing = exp(-abs(dCore) * 11.0);
   float coreOuterGlow = exp(-max(dCore, 0.0) * 8.0) * smoothstep(0.90, 0.25, r);
+  float fireBand =
+    smoothstep(coreRadius + 0.010, coreRadius + 0.070, r) *
+    smoothstep(coreRadius + 0.240, coreRadius + 0.060, r);
+
+  float fireFlow = uTime * 0.07;
+  float fireDrift = uTime * 0.03;
+  float fireBase = noise(vec2(a * 5.0 + fireFlow, r * 22.0 - fireFlow * 0.65));
+  float fireDetail = noise(vec2(a * 11.0 - fireFlow * 0.35, r * 46.0 + fireFlow * 0.95 + fireDrift));
+  float fireTongue = pow(max(0.0, sin(a * 9.0 - fireFlow * 0.9) * 0.5 + 0.5), 1.6);
+  float fireShape = clamp(
+    fireBase * 0.72 + fireDetail * 0.45 + fireTongue * 0.35 -
+    smoothstep(coreRadius + 0.045, coreRadius + 0.22, r),
+    0.0,
+    1.0
+  ) * fireBand;
+  vec3 fireAccent = palette(vec2(cos(a), sin(a)) * coreRadius, a);
+  vec3 fireColor = mix(
+    mix(fireAccent, whiteGlow, 0.35),
+    fireAccent * 0.55,
+    smoothstep(coreRadius + 0.05, coreRadius + 0.20, r)
+  );
 
   col += accent * coreOuterGlow * 0.34;
   col += mix(accent, whiteGlow, 0.06) * coreRing * 0.62;
+  col += fireColor * fireShape * 0.48;
+  col += mix(fireAccent, whiteGlow, 0.65) * fireShape * 0.10;
 
   float sector = TAU / 7.0;
 
@@ -162,6 +185,7 @@ void main() {
   float alpha = clamp(
     coreOuterGlow * 0.35 +
     coreRing * 0.50 +
+    fireShape * 0.34 +
     armGlow * 0.36 +
     armBody * 0.75 +
     headGlow * 0.36 +
