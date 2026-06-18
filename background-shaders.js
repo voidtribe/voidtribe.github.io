@@ -86,11 +86,15 @@ vec3 applyInvRot(vec3 v){
 }
 
 vec3 sampleEnv(vec3 dir){
-  /* Matcap-style mapping: use the normal's x/y components directly as UV.
-     The full front hemisphere maps to the full texture (no zoom),
-     and poles of the texture sit at the edges, outside the visible blob. */
-  float u = dir.x * 0.5 + 0.5;
-  float v = -dir.y * 0.5 + 0.5;
+    /* Start from linear normal->UV mapping, then apply inward radial warp
+      so reflections read as convex (bulging outward) instead of concave. */
+  vec2 m = dir.xy;
+  float r = clamp(length(m), 0.0, 1.0);
+  float fishEyeAmount = 0.66;
+    float rWarp = clamp(r - fishEyeAmount * r * (1.0 - r), 0.0, 1.0);
+  vec2 warped = (r > 1e-5) ? (m / r) * rWarp : vec2(0.0);
+  float u = -warped.x * 0.5 + 0.5;
+  float v = -warped.y * 0.5 + 0.5;
   return texture(cam, vec2(u, v)).rgb;
 }
 
@@ -117,7 +121,7 @@ void main(){
     /* normal: compute in object space, rotate back to camera space */
     vec3 n = applyRot(normal(applyInvRot(ro + rd*d)));
 
-    vec3 ld   = normalize(vec3(1., 1.5, 2.));
+    vec3 ld   = normalize(vec3(3.55, 3.0, 2.0));
     float fresnel = pow(1. - max(dot(n, -rd), 0.), 3.);
     /* Sample env using the surface normal: poles of the texture land exactly
        at the top/bottom of the blob (n.y = ±1) which are never visible
