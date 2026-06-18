@@ -7,14 +7,15 @@
   <link rel="stylesheet" href="styles.css">
   <script src="background-shaders.js" defer></script>
   <script src="logo-shaders.js" defer></script>
+  <script src="renderloop.js" defer></script>
   <script src="main.js" defer></script>
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-7RZQXV7Z03"></script>
   <script src="analytics.js" defer></script>
 </head>
 <body>
-  <canvas id="c"></canvas>
-  <video id="v" autoplay playsinline muted></video>
+  <canvas id="background-canvas"></canvas>
+  <video id="webcam" autoplay playsinline muted></video>
 
   <div id="overlay">
     <canvas id="logo-canvas" aria-label="voidtribe logo"></canvas>

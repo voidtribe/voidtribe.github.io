@@ -1,110 +1,105 @@
-const canvas = document.getElementById('c');
-const video  = document.getElementById('v');
-const status = document.getElementById('cam-status');
-const btn    = document.getElementById('cam-btn');
-const logoCanvas = document.getElementById('logo-canvas');
+const canvas = document.getElementById("background-canvas");
+const video = document.getElementById("webcam");
+const status = document.getElementById("cam-status");
+const btn = document.getElementById("cam-btn");
+const logoCanvas = document.getElementById("logo-canvas");
+
+const { createProgram, createFullscreenQuad, startUnifiedRenderLoop } = window.RenderLoop;
 
 setCamButtonMode(false);
 
-function setCamButtonMode(enabled){
-  btn.textContent = enabled ? 'disable webcam' : 'enable webcam';
+function setCamButtonMode(enabled) {
+  btn.textContent = enabled ? "disable webcam" : "enable webcam";
   btn.onclick = enabled ? stopCam : startCam;
 }
 
-/* ── mouse rotation state ── */
-let rotX = 0.18, rotY = 0.0;
-let targetRotX = 0.18, targetRotY = 0.0;
-let dragging = false, lastMX = 0, lastMY = 0;
+let rotX = 0.18;
+let rotY = 0.0;
+let targetRotX = 0.18;
+let targetRotY = 0.0;
+let dragging = false;
+let lastMX = 0;
+let lastMY = 0;
 
-canvas.addEventListener('mousedown', e => {
+canvas.addEventListener("mousedown", (e) => {
   dragging = true;
-  lastMX = e.clientX; lastMY = e.clientY;
-  document.body.classList.add('dragging');
+  lastMX = e.clientX;
+  lastMY = e.clientY;
+  document.body.classList.add("dragging");
 });
-window.addEventListener('mouseup', () => {
+
+window.addEventListener("mouseup", () => {
   dragging = false;
-  document.body.classList.remove('dragging');
+  document.body.classList.remove("dragging");
 });
-window.addEventListener('mousemove', e => {
-  if(!dragging) return;
+
+window.addEventListener("mousemove", (e) => {
+  if (!dragging) return;
   targetRotY += (e.clientX - lastMX) * 0.008;
   targetRotX += (e.clientY - lastMY) * 0.008;
-  targetRotX  = Math.max(-1.2, Math.min(1.2, targetRotX));
-  lastMX = e.clientX; lastMY = e.clientY;
+  targetRotX = Math.max(-1.2, Math.min(1.2, targetRotX));
+  lastMX = e.clientX;
+  lastMY = e.clientY;
 });
-/* touch support */
-canvas.addEventListener('touchstart', e => {
+
+canvas.addEventListener("touchstart", (e) => {
   dragging = true;
-  lastMX = e.touches[0].clientX; lastMY = e.touches[0].clientY;
+  lastMX = e.touches[0].clientX;
+  lastMY = e.touches[0].clientY;
 }, { passive: true });
-window.addEventListener('touchend', () => { dragging = false; });
-window.addEventListener('touchmove', e => {
-  if(!dragging) return;
+
+window.addEventListener("touchend", () => {
+  dragging = false;
+});
+
+window.addEventListener("touchmove", (e) => {
+  if (!dragging) return;
   targetRotY += (e.touches[0].clientX - lastMX) * 0.008;
   targetRotX += (e.touches[0].clientY - lastMY) * 0.008;
-  targetRotX  = Math.max(-1.2, Math.min(1.2, targetRotX));
-  lastMX = e.touches[0].clientX; lastMY = e.touches[0].clientY;
+  targetRotX = Math.max(-1.2, Math.min(1.2, targetRotX));
+  lastMX = e.touches[0].clientX;
+  lastMY = e.touches[0].clientY;
 }, { passive: true });
 
-function resize() {
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
-  if (gl) gl.viewport(0, 0, canvas.width, canvas.height);
-  if (rLoc) gl.uniform2f(rLoc, canvas.width, canvas.height);
-}
-window.addEventListener('resize', resize);
+const gl = canvas.getContext("webgl2");
 
-const gl = canvas.getContext('webgl2');
-
-if(!gl){
-  alert('WebGL2 wordt niet ondersteund door deze browser.');
-  throw new Error('WebGL2 not supported');
+if (!gl) {
+  alert("WebGL2 wordt niet ondersteund door deze browser.");
+  throw new Error("WebGL2 not supported");
 }
 
 const { VERT, FRAG } = window.VoidTribeShaders;
+const backgroundProgram = createProgram(gl, VERT, FRAG, "Background");
+const backgroundQuad = createFullscreenQuad(gl, backgroundProgram, "p");
 
+gl.useProgram(backgroundProgram);
 
-function mkShader(type, src){
-  const s = gl.createShader(type);
-  gl.shaderSource(s, src);
-  gl.compileShader(s);
-  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS))
-    console.error(gl.getShaderInfoLog(s));
-  return s;
-}
+const tLoc = gl.getUniformLocation(backgroundProgram, "t");
+const rLoc = gl.getUniformLocation(backgroundProgram, "res");
+const rotLoc = gl.getUniformLocation(backgroundProgram, "rot");
+const camLoc = gl.getUniformLocation(backgroundProgram, "cam");
+const hasCamLoc = gl.getUniformLocation(backgroundProgram, "hasCam");
 
-const prog = gl.createProgram();
-gl.attachShader(prog, mkShader(gl.VERTEX_SHADER,   VERT));
-gl.attachShader(prog, mkShader(gl.FRAGMENT_SHADER, FRAG));
-gl.linkProgram(prog);
-gl.useProgram(prog);
-
-const vbuf = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
-gl.bufferData(gl.ARRAY_BUFFER,
-  new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
-const aloc = gl.getAttribLocation(prog, 'p');
-gl.enableVertexAttribArray(aloc);
-gl.vertexAttribPointer(aloc, 2, gl.FLOAT, false, 0, 0);
-
-const tLoc      = gl.getUniformLocation(prog, 't');
-const rLoc      = gl.getUniformLocation(prog, 'res');
-const rotLoc    = gl.getUniformLocation(prog, 'rot');
-const camLoc    = gl.getUniformLocation(prog, 'cam');
-const hasCamLoc = gl.getUniformLocation(prog, 'hasCam');
 gl.uniform1i(camLoc, 0);
 gl.uniform1i(hasCamLoc, 0);
 
-resize();
+function resizeBackgroundCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.uniform2f(rLoc, canvas.width, canvas.height);
+}
 
-/* ── double-buffered webcam textures ── */
+window.addEventListener("resize", resizeBackgroundCanvas);
+resizeBackgroundCanvas();
+
 const FALLBACK_TEX_SIZE = 256;
 
-function createFallbackTextureData(size = FALLBACK_TEX_SIZE){
+function createFallbackTextureData(size = FALLBACK_TEX_SIZE) {
   const data = new Uint8Array(size * size * 4);
 
-  for(let y = 0; y < size; y++){
-    for(let x = 0; x < size; x++){
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
       const i = (y * size + x) * 4;
 
       const u = x / (size - 1);
@@ -115,11 +110,11 @@ function createFallbackTextureData(size = FALLBACK_TEX_SIZE){
       const dist = Math.sqrt(dx * dx + dy * dy);
 
       const rings = Math.sin(dist * 80.0) * 0.5 + 0.5;
-      const glow  = Math.max(0, 1.0 - dist * 1.8);
+      const glow = Math.max(0, 1.0 - dist * 1.8);
 
-      const r = 12  + glow * 45 + rings * 12;
-      const g = 5   + glow * 18;
-      const b = 35  + glow * 130 + rings * 55;
+      const r = 12 + glow * 45 + rings * 12;
+      const g = 5 + glow * 18;
+      const b = 35 + glow * 130 + rings * 55;
 
       data[i + 0] = Math.min(255, r);
       data[i + 1] = Math.min(255, g);
@@ -133,12 +128,12 @@ function createFallbackTextureData(size = FALLBACK_TEX_SIZE){
 
 const FALLBACK_TEX_DATA = createFallbackTextureData();
 
-function makeTex(){
+function makeTex() {
   const t = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, t);
 
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S,     gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T,     gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
@@ -156,16 +151,16 @@ function makeTex(){
 
   return t;
 }
-let texFront = makeTex();    /* GPU reads this */
-let texBack  = makeTex();    /* CPU writes new webcam frames here */
+
+let texFront = makeTex();
+let texBack = makeTex();
 let lastVideoTime = -1;
 let pendingVideoFrame = false;
 let latestPresentedFrames = -1;
 let camTexturesAllocated = false;
-
 let camReady = false;
 
-function resetCamTextureToFallback(tex){
+function resetCamTextureToFallback(tex) {
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texImage2D(
     gl.TEXTURE_2D,
@@ -180,16 +175,16 @@ function resetCamTextureToFallback(tex){
   );
 }
 
-function resetCamFrameState(){
+function resetCamFrameState() {
   lastVideoTime = -1;
   pendingVideoFrame = false;
   latestPresentedFrames = -1;
 }
 
-function allocateCamTexturesForVideo(){
+function allocateCamTexturesForVideo() {
   const w = video.videoWidth | 0;
   const h = video.videoHeight | 0;
-  if(w <= 0 || h <= 0) return false;
+  if (w <= 0 || h <= 0) return false;
 
   gl.bindTexture(gl.TEXTURE_2D, texFront);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
@@ -200,10 +195,13 @@ function allocateCamTexturesForVideo(){
   return true;
 }
 
-async function startCam(){
+async function startCam() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia(
-      { video: { facingMode: 'user', width: { ideal: 640 } }, audio: false });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user", width: { ideal: 640 } },
+      audio: false
+    });
+
     video.srcObject = stream;
     video.onloadedmetadata = async () => {
       await video.play().catch(() => {});
@@ -212,17 +210,17 @@ async function startCam(){
       resetCamFrameState();
       gl.uniform1i(hasCamLoc, 1);
       scheduleFrameUpload();
-      status.textContent = 'cam on';
+      status.textContent = "cam on";
       setCamButtonMode(true);
     };
-  } catch(e) {
-    status.textContent = 'no permission';
+  } catch (e) {
+    status.textContent = "no permission";
   }
 }
 
-function stopCam(){
-  if(video.srcObject){
-    video.srcObject.getTracks().forEach(t => t.stop());
+function stopCam() {
+  if (video.srcObject) {
+    video.srcObject.getTracks().forEach((t) => t.stop());
     video.srcObject = null;
   }
 
@@ -236,18 +234,18 @@ function stopCam(){
 
   gl.uniform1i(hasCamLoc, 0);
 
-  status.textContent = 'no cam';
+  status.textContent = "no cam";
   setCamButtonMode(false);
 }
 
-function scheduleFrameUpload(){
-  if(!camReady || !video.requestVideoFrameCallback) return;
+function scheduleFrameUpload() {
+  if (!camReady || !video.requestVideoFrameCallback) return;
 
   video.requestVideoFrameCallback((_, metadata) => {
-    if(!camReady) return;
+    if (!camReady) return;
 
-    if(metadata && typeof metadata.presentedFrames === 'number'){
-      if(metadata.presentedFrames > latestPresentedFrames){
+    if (metadata && typeof metadata.presentedFrames === "number") {
+      if (metadata.presentedFrames > latestPresentedFrames) {
         latestPresentedFrames = metadata.presentedFrames;
         pendingVideoFrame = true;
       }
@@ -259,23 +257,22 @@ function scheduleFrameUpload(){
   });
 }
 
-function loop(ms){
+function renderBackground(now) {
   rotX += (targetRotX - rotX) * 0.08;
   rotY += (targetRotY - rotY) * 0.08;
 
-  /* Desktop-stable path: mark new frames via rVFC, then upload+swap in RAF. */
-  if(camReady && video.readyState >= 2){
-    if(!video.requestVideoFrameCallback && video.currentTime !== lastVideoTime){
+  if (camReady && video.readyState >= 2) {
+    if (!video.requestVideoFrameCallback && video.currentTime !== lastVideoTime) {
       lastVideoTime = video.currentTime;
       pendingVideoFrame = true;
     }
 
-    if(pendingVideoFrame){
-      if(!camTexturesAllocated){
+    if (pendingVideoFrame) {
+      if (!camTexturesAllocated) {
         allocateCamTexturesForVideo();
       }
 
-      if(camTexturesAllocated){
+      if (camTexturesAllocated) {
         pendingVideoFrame = false;
         gl.bindTexture(gl.TEXTURE_2D, texBack);
         gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video);
@@ -284,24 +281,22 @@ function loop(ms){
     }
   }
 
+  gl.useProgram(backgroundProgram);
+  gl.bindVertexArray(backgroundQuad.vao);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, texFront);
-  gl.uniform1f(tLoc, ms * 0.0005);
+  gl.uniform1f(tLoc, now * 0.0005);
   gl.uniform2f(rotLoc, rotX, rotY);
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-  requestAnimationFrame(loop);
+  gl.drawArrays(gl.TRIANGLES, 0, backgroundQuad.vertexCount);
 }
-requestAnimationFrame(loop);
 
-initLogoShader();
+function createLogoRenderer() {
+  if (!logoCanvas) return null;
 
-function initLogoShader(){
-  if(!logoCanvas) return;
   const logoShaders = window.VoidTribeLogoShaders;
-  if(!logoShaders || !logoShaders.VERT || !logoShaders.FRAG) return;
+  if (!logoShaders || !logoShaders.VERT || !logoShaders.FRAG) return null;
 
-  const logoGl = logoCanvas.getContext('webgl2', {
+  const logoGl = logoCanvas.getContext("webgl2", {
     alpha: true,
     antialias: true,
     depth: false,
@@ -310,101 +305,57 @@ function initLogoShader(){
     preserveDrawingBuffer: false
   });
 
-  if(!logoGl) return;
-
-  function compileShader(type, source){
-    const shader = logoGl.createShader(type);
-    logoGl.shaderSource(shader, source);
-    logoGl.compileShader(shader);
-    if(!logoGl.getShaderParameter(shader, logoGl.COMPILE_STATUS)){
-      const log = logoGl.getShaderInfoLog(shader);
-      logoGl.deleteShader(shader);
-      throw new Error(log || 'Logo shader compile error');
-    }
-    return shader;
-  }
-
-  function createProgram(vertexSource, fragmentSource){
-    const vertexShader = compileShader(logoGl.VERTEX_SHADER, vertexSource);
-    const fragmentShader = compileShader(logoGl.FRAGMENT_SHADER, fragmentSource);
-
-    const program = logoGl.createProgram();
-    logoGl.attachShader(program, vertexShader);
-    logoGl.attachShader(program, fragmentShader);
-    logoGl.linkProgram(program);
-
-    logoGl.deleteShader(vertexShader);
-    logoGl.deleteShader(fragmentShader);
-
-    if(!logoGl.getProgramParameter(program, logoGl.LINK_STATUS)){
-      const log = logoGl.getProgramInfoLog(program);
-      logoGl.deleteProgram(program);
-      throw new Error(log || 'Logo shader link error');
-    }
-
-    return program;
-  }
+  if (!logoGl) return null;
 
   let logoProgram;
   try {
-    logoProgram = createProgram(logoShaders.VERT, logoShaders.FRAG);
-  } catch(err){
+    logoProgram = createProgram(logoGl, logoShaders.VERT, logoShaders.FRAG, "Logo");
+  } catch (err) {
     console.error(err);
-    return;
+    return null;
   }
 
-  const positionLocation = logoGl.getAttribLocation(logoProgram, 'aPosition');
-  const resolutionLocation = logoGl.getUniformLocation(logoProgram, 'uResolution');
-  const timeLocation = logoGl.getUniformLocation(logoProgram, 'uTime');
+  const logoQuad = createFullscreenQuad(logoGl, logoProgram, "aPosition");
+  const resolutionLocation = logoGl.getUniformLocation(logoProgram, "uResolution");
+  const timeLocation = logoGl.getUniformLocation(logoProgram, "uTime");
 
-  const vertices = new Float32Array([
-    -1, -1,
-     1, -1,
-    -1,  1,
-    -1,  1,
-     1, -1,
-     1,  1
-  ]);
-
-  const vao = logoGl.createVertexArray();
-  logoGl.bindVertexArray(vao);
-
-  const vertexBuffer = logoGl.createBuffer();
-  logoGl.bindBuffer(logoGl.ARRAY_BUFFER, vertexBuffer);
-  logoGl.bufferData(logoGl.ARRAY_BUFFER, vertices, logoGl.STATIC_DRAW);
-
-  logoGl.enableVertexAttribArray(positionLocation);
-  logoGl.vertexAttribPointer(positionLocation, 2, logoGl.FLOAT, false, 0, 0);
-  logoGl.bindVertexArray(null);
-
-  function resizeLogo(){
+  function resizeLogoCanvas() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const width = Math.floor(logoCanvas.clientWidth * dpr);
     const height = Math.floor(logoCanvas.clientHeight * dpr);
 
-    if(width > 0 && height > 0 && (logoCanvas.width !== width || logoCanvas.height !== height)){
+    if (
+      width > 0 &&
+      height > 0 &&
+      (logoCanvas.width !== width || logoCanvas.height !== height)
+    ) {
       logoCanvas.width = width;
       logoCanvas.height = height;
       logoGl.viewport(0, 0, width, height);
     }
   }
 
-  function renderLogo(now){
-    resizeLogo();
+  return {
+    render(now) {
+      resizeLogoCanvas();
 
-    logoGl.clearColor(0, 0, 0, 0);
-    logoGl.clear(logoGl.COLOR_BUFFER_BIT);
+      logoGl.clearColor(0, 0, 0, 0);
+      logoGl.clear(logoGl.COLOR_BUFFER_BIT);
 
-    logoGl.useProgram(logoProgram);
-    logoGl.bindVertexArray(vao);
-
-    logoGl.uniform2f(resolutionLocation, logoCanvas.width || 1, logoCanvas.height || 1);
-    logoGl.uniform1f(timeLocation, now * 0.01);
-
-    logoGl.drawArrays(logoGl.TRIANGLES, 0, 6);
-
-    requestAnimationFrame(renderLogo);
-  }
-
-  requestAnimationFrame(renderLogo);
+      logoGl.useProgram(logoProgram);
+      logoGl.bindVertexArray(logoQuad.vao);
+      logoGl.uniform2f(resolutionLocation, logoCanvas.width || 1, logoCanvas.height || 1);
+      logoGl.uniform1f(timeLocation, now * 0.01);
+      logoGl.drawArrays(logoGl.TRIANGLES, 0, logoQuad.vertexCount);
+    }
+  };
 }
+
+const logoRenderer = createLogoRenderer();
+
+startUnifiedRenderLoop((now) => {
+  renderBackground(now);
+  if (logoRenderer) {
+    logoRenderer.render(now);
+  }
+});
