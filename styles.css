@@ -18,11 +18,19 @@
     pointer-events: none;
     user-select: none;
   }
-  #logo {
+  #logo-canvas {
     display: block;
-    width: min(60vw, 320px);
+    width: min(60vw, 240px);
     height: auto;
-    margin: 0 auto 0.8rem;
+    aspect-ratio: 1 / 1;
+    margin: 0 auto 0.3rem;
+    transform: translateY(8px);
+  }
+  #logo-text {
+    display: block;
+    width: min(72vw, 300px);
+    height: auto;
+    margin: 0 auto 0.55rem;
   }
   #subtitle {
     font-size: 0.85rem;

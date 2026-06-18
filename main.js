@@ -2,6 +2,7 @@ const canvas = document.getElementById('c');
 const video  = document.getElementById('v');
 const status = document.getElementById('cam-status');
 const btn    = document.getElementById('cam-btn');
+const logoCanvas = document.getElementById('logo-canvas');
 
 setCamButtonMode(false);
 
@@ -292,3 +293,118 @@ function loop(ms){
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+initLogoShader();
+
+function initLogoShader(){
+  if(!logoCanvas) return;
+  const logoShaders = window.VoidTribeLogoShaders;
+  if(!logoShaders || !logoShaders.VERT || !logoShaders.FRAG) return;
+
+  const logoGl = logoCanvas.getContext('webgl2', {
+    alpha: true,
+    antialias: true,
+    depth: false,
+    stencil: false,
+    premultipliedAlpha: true,
+    preserveDrawingBuffer: false
+  });
+
+  if(!logoGl) return;
+
+  function compileShader(type, source){
+    const shader = logoGl.createShader(type);
+    logoGl.shaderSource(shader, source);
+    logoGl.compileShader(shader);
+    if(!logoGl.getShaderParameter(shader, logoGl.COMPILE_STATUS)){
+      const log = logoGl.getShaderInfoLog(shader);
+      logoGl.deleteShader(shader);
+      throw new Error(log || 'Logo shader compile error');
+    }
+    return shader;
+  }
+
+  function createProgram(vertexSource, fragmentSource){
+    const vertexShader = compileShader(logoGl.VERTEX_SHADER, vertexSource);
+    const fragmentShader = compileShader(logoGl.FRAGMENT_SHADER, fragmentSource);
+
+    const program = logoGl.createProgram();
+    logoGl.attachShader(program, vertexShader);
+    logoGl.attachShader(program, fragmentShader);
+    logoGl.linkProgram(program);
+
+    logoGl.deleteShader(vertexShader);
+    logoGl.deleteShader(fragmentShader);
+
+    if(!logoGl.getProgramParameter(program, logoGl.LINK_STATUS)){
+      const log = logoGl.getProgramInfoLog(program);
+      logoGl.deleteProgram(program);
+      throw new Error(log || 'Logo shader link error');
+    }
+
+    return program;
+  }
+
+  let logoProgram;
+  try {
+    logoProgram = createProgram(logoShaders.VERT, logoShaders.FRAG);
+  } catch(err){
+    console.error(err);
+    return;
+  }
+
+  const positionLocation = logoGl.getAttribLocation(logoProgram, 'aPosition');
+  const resolutionLocation = logoGl.getUniformLocation(logoProgram, 'uResolution');
+  const timeLocation = logoGl.getUniformLocation(logoProgram, 'uTime');
+
+  const vertices = new Float32Array([
+    -1, -1,
+     1, -1,
+    -1,  1,
+    -1,  1,
+     1, -1,
+     1,  1
+  ]);
+
+  const vao = logoGl.createVertexArray();
+  logoGl.bindVertexArray(vao);
+
+  const vertexBuffer = logoGl.createBuffer();
+  logoGl.bindBuffer(logoGl.ARRAY_BUFFER, vertexBuffer);
+  logoGl.bufferData(logoGl.ARRAY_BUFFER, vertices, logoGl.STATIC_DRAW);
+
+  logoGl.enableVertexAttribArray(positionLocation);
+  logoGl.vertexAttribPointer(positionLocation, 2, logoGl.FLOAT, false, 0, 0);
+  logoGl.bindVertexArray(null);
+
+  function resizeLogo(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const width = Math.floor(logoCanvas.clientWidth * dpr);
+    const height = Math.floor(logoCanvas.clientHeight * dpr);
+
+    if(width > 0 && height > 0 && (logoCanvas.width !== width || logoCanvas.height !== height)){
+      logoCanvas.width = width;
+      logoCanvas.height = height;
+      logoGl.viewport(0, 0, width, height);
+    }
+  }
+
+  function renderLogo(now){
+    resizeLogo();
+
+    logoGl.clearColor(0, 0, 0, 0);
+    logoGl.clear(logoGl.COLOR_BUFFER_BIT);
+
+    logoGl.useProgram(logoProgram);
+    logoGl.bindVertexArray(vao);
+
+    logoGl.uniform2f(resolutionLocation, logoCanvas.width || 1, logoCanvas.height || 1);
+    logoGl.uniform1f(timeLocation, now * 0.01);
+
+    logoGl.drawArrays(logoGl.TRIANGLES, 0, 6);
+
+    requestAnimationFrame(renderLogo);
+  }
+
+  requestAnimationFrame(renderLogo);
+}
