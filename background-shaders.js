@@ -104,7 +104,7 @@ vec3 sampleEnv(vec3 dir){
       so reflections read as convex (bulging outward) instead of concave. */
   vec2 m = dir.xy;
   float r = clamp(length(m), 0.0, 1.0);
-  float fishEyeAmount = 0.66;
+  float fishEyeAmount = 0.5;
     float rWarp = clamp(r - fishEyeAmount * r * (1.0 - r), 0.0, 1.0);
   vec2 warped = (r > 1e-5) ? (m / r) * rWarp : vec2(0.0);
   float u = -warped.x * 0.5 + 0.5;
@@ -124,7 +124,7 @@ void main(){
      env-map stays naturally in camera space. */
   float d   = 0.;
   bool  hit = false;
-  for(int i = 0; i < 72; i++){
+  for(int i = 0; i < 256; i++){
     float s = scene(applyInvRot(ro + rd*d));
     if(s < 0.0012){ hit = true; break; }
     if(d > 10.5) break;
