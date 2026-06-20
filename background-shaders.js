@@ -36,7 +36,7 @@ float scene(vec3 p){
   float t041 = t * 0.41;
   float t11  = t * 1.1;
   float t05  = t * 0.5;
-  for(int i = 0; i < 9; i++){
+  for(int i = 0; i < 5; i++){
     float fi  = float(i);
     float ang = fi*0.6283 + t025;
     float rad = 1.1 + sin(t06 + fi*0.9)*0.25;

@@ -157,6 +157,8 @@ let texBack = makeTex();
 let lastVideoTime = -1;
 let pendingVideoFrame = false;
 let latestPresentedFrames = -1;
+let pendingFrameId = -1;
+let uploadedFrameId = -1;
 let camTexturesAllocated = false;
 let camReady = false;
 
@@ -179,6 +181,8 @@ function resetCamFrameState() {
   lastVideoTime = -1;
   pendingVideoFrame = false;
   latestPresentedFrames = -1;
+  pendingFrameId = -1;
+  uploadedFrameId = -1;
 }
 
 function allocateCamTexturesForVideo() {
@@ -247,9 +251,11 @@ function scheduleFrameUpload() {
     if (metadata && typeof metadata.presentedFrames === "number") {
       if (metadata.presentedFrames > latestPresentedFrames) {
         latestPresentedFrames = metadata.presentedFrames;
+        pendingFrameId = metadata.presentedFrames;
         pendingVideoFrame = true;
       }
     } else {
+      pendingFrameId += 1;
       pendingVideoFrame = true;
     }
 
@@ -264,10 +270,11 @@ function renderBackground(now) {
   if (camReady && video.readyState >= 2) {
     if (!video.requestVideoFrameCallback && video.currentTime !== lastVideoTime) {
       lastVideoTime = video.currentTime;
+      pendingFrameId += 1;
       pendingVideoFrame = true;
     }
 
-    if (pendingVideoFrame) {
+    if (pendingVideoFrame && pendingFrameId > uploadedFrameId) {
       if (!camTexturesAllocated) {
         allocateCamTexturesForVideo();
       }
@@ -277,6 +284,7 @@ function renderBackground(now) {
         gl.bindTexture(gl.TEXTURE_2D, texBack);
         gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video);
         [texFront, texBack] = [texBack, texFront];
+        uploadedFrameId = pendingFrameId;
       }
     }
   }
