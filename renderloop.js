@@ -40,13 +40,11 @@ window.RenderLoop = (() => {
       throw new Error("Attribute not found: " + attributeName);
     }
 
+    // Single oversized triangle covering the full viewport.
     const vertices = new Float32Array([
       -1, -1,
-       1, -1,
-      -1,  1,
-      -1,  1,
-       1, -1,
-       1,  1
+      -1,  3,
+       3, -1
     ]);
 
     const vao = gl.createVertexArray();
@@ -64,7 +62,7 @@ window.RenderLoop = (() => {
     return {
       vao,
       vertexBuffer,
-      vertexCount: 6
+      vertexCount: 3
     };
   }
 
