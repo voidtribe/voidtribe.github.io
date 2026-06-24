@@ -4,10 +4,9 @@
     {
       "label": "Start local web server (8080)",
       "type": "shell",
-      "command": "python3",
+      "command": "node",
       "args": [
-        "-m",
-        "http.server",
+        ".vscode/static-server.js",
         "8080"
       ],
       "options": {

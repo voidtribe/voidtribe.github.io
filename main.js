@@ -4,7 +4,7 @@ const status = document.getElementById("cam-status");
 const btn = document.getElementById("cam-btn");
 const logoCanvas = document.getElementById("logo-canvas");
 
-const { createProgram, createFullscreenQuad, startUnifiedRenderLoop } = window.RenderLoop;
+const { createProgram, createFullscreenTriangle, startUnifiedRenderLoop } = window.RenderLoop;
 
 setCamButtonMode(false);
 
@@ -70,7 +70,7 @@ if (!gl) {
 
 const { VERT, FRAG } = window.VoidTribeShaders;
 const backgroundProgram = createProgram(gl, VERT, FRAG, "Background");
-const backgroundQuad = createFullscreenQuad(gl, backgroundProgram, "p");
+const backgroundTriangle = createFullscreenTriangle(gl, backgroundProgram, "p");
 
 gl.useProgram(backgroundProgram);
 
@@ -97,17 +97,25 @@ const FALLBACK_TEX_SIZE = 256;
 
 function createFallbackTextureData(size = FALLBACK_TEX_SIZE) {
   const data = new Uint8Array(size * size * 4);
+  const coordScale = size > 1 ? 1 / (size - 1) : 0;
+  const rowStride = size * 4;
+  const dxSquared = new Float64Array(size);
+  let dx = -0.5;
+
+  for (let x = 0; x < size; x++) {
+    dxSquared[x] = dx * dx;
+    dx += coordScale;
+  }
+
+  let dy = -0.5;
+  let rowOffset = 0;
 
   for (let y = 0; y < size; y++) {
+    const dySquared = dy * dy;
+    let i = rowOffset;
+
     for (let x = 0; x < size; x++) {
-      const i = (y * size + x) * 4;
-
-      const u = x / (size - 1);
-      const v = y / (size - 1);
-
-      const dx = u - 0.5;
-      const dy = v - 0.5;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const dist = Math.sqrt(dxSquared[x] + dySquared);
 
       const rings = Math.sin(dist * 80.0) * 0.5 + 0.5;
       const glow = Math.max(0, 1.0 - dist * 1.8);
@@ -120,7 +128,12 @@ function createFallbackTextureData(size = FALLBACK_TEX_SIZE) {
       data[i + 1] = Math.min(255, g);
       data[i + 2] = Math.min(255, b);
       data[i + 3] = 255;
+
+      i += 4;
     }
+
+    dy += coordScale;
+    rowOffset += rowStride;
   }
 
   return data;
@@ -290,12 +303,12 @@ function renderBackground(now) {
   }
 
   gl.useProgram(backgroundProgram);
-  gl.bindVertexArray(backgroundQuad.vao);
+  gl.bindVertexArray(backgroundTriangle.vao);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, texFront);
   gl.uniform1f(tLoc, now * 0.0005);
   gl.uniform2f(rotLoc, rotX, rotY);
-  gl.drawArrays(gl.TRIANGLES, 0, backgroundQuad.vertexCount);
+  gl.drawArrays(gl.TRIANGLES, 0, backgroundTriangle.vertexCount);
 }
 
 function createLogoRenderer() {
@@ -323,7 +336,7 @@ function createLogoRenderer() {
     return null;
   }
 
-  const logoQuad = createFullscreenQuad(logoGl, logoProgram, "aPosition");
+  const logoTriangle = createFullscreenTriangle(logoGl, logoProgram, "aPosition");
   const resolutionLocation = logoGl.getUniformLocation(logoProgram, "uResolution");
   const timeLocation = logoGl.getUniformLocation(logoProgram, "uTime");
 
@@ -351,10 +364,10 @@ function createLogoRenderer() {
       logoGl.clear(logoGl.COLOR_BUFFER_BIT);
 
       logoGl.useProgram(logoProgram);
-      logoGl.bindVertexArray(logoQuad.vao);
+      logoGl.bindVertexArray(logoTriangle.vao);
       logoGl.uniform2f(resolutionLocation, logoCanvas.width || 1, logoCanvas.height || 1);
       logoGl.uniform1f(timeLocation, now * 0.01);
-      logoGl.drawArrays(logoGl.TRIANGLES, 0, logoQuad.vertexCount);
+      logoGl.drawArrays(logoGl.TRIANGLES, 0, logoTriangle.vertexCount);
     }
   };
 }

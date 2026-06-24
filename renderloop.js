@@ -34,7 +34,7 @@ window.RenderLoop = (() => {
     return program;
   }
 
-  function createFullscreenQuad(gl, program, attributeName) {
+  function createFullscreenTriangle(gl, program, attributeName) {
     const location = gl.getAttribLocation(program, attributeName);
     if (location < 0) {
       throw new Error("Attribute not found: " + attributeName);
@@ -81,7 +81,7 @@ window.RenderLoop = (() => {
 
   return {
     createProgram,
-    createFullscreenQuad,
+    createFullscreenTriangle,
     startUnifiedRenderLoop
   };
 })();
