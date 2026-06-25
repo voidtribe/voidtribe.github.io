@@ -1,4 +1,4 @@
-window.VoidTribeLogoShaders = {
+window.VoidTribeLogoShaders = () => ({
   VERT: `#version 300 es
 precision highp float;
 
@@ -193,4 +193,4 @@ void main() {
 
   fragColor = vec4(col, alpha);
 }`
-};
+});

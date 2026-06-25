@@ -5,6 +5,7 @@ const btn = document.getElementById("cam-btn");
 const logoCanvas = document.getElementById("logo-canvas");
 
 const { createProgram, createFullscreenTriangle, startUnifiedRenderLoop } = window.RenderLoop;
+window.RenderLoop = null;
 
 setCamButtonMode(false);
 
@@ -68,7 +69,8 @@ if (!gl) {
   throw new Error("WebGL2 not supported");
 }
 
-const { VERT, FRAG } = window.VoidTribeShaders;
+const { VERT, FRAG } = window.VoidTribeShaders();
+window.VoidTribeShaders = null;
 const backgroundProgram = createProgram(gl, VERT, FRAG, "Background");
 const backgroundTriangle = createFullscreenTriangle(gl, backgroundProgram, "p");
 
@@ -139,9 +141,7 @@ function createFallbackTextureData(size = FALLBACK_TEX_SIZE) {
   return data;
 }
 
-const FALLBACK_TEX_DATA = createFallbackTextureData();
-
-function makeTex() {
+function makeTex(data) {
   const t = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, t);
 
@@ -159,14 +159,18 @@ function makeTex() {
     0,
     gl.RGBA,
     gl.UNSIGNED_BYTE,
-    FALLBACK_TEX_DATA
+    data
   );
 
   return t;
 }
 
-let texFront = makeTex();
-let texBack = makeTex();
+let texFront, texBack;
+{
+  const fallbackData = createFallbackTextureData();
+  texFront = makeTex(fallbackData);
+  texBack = makeTex(fallbackData);
+}
 let lastVideoTime = -1;
 let pendingVideoFrame = false;
 let latestPresentedFrames = -1;
@@ -176,6 +180,7 @@ let camTexturesAllocated = false;
 let camReady = false;
 
 function resetCamTextureToFallback(tex) {
+  const data = createFallbackTextureData();
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texImage2D(
     gl.TEXTURE_2D,
@@ -186,8 +191,9 @@ function resetCamTextureToFallback(tex) {
     0,
     gl.RGBA,
     gl.UNSIGNED_BYTE,
-    FALLBACK_TEX_DATA
+    data
   );
+  // data wordt na deze aanroep vrijgegeven door de GC
 }
 
 function resetCamFrameState() {
@@ -314,7 +320,8 @@ function renderBackground(now) {
 function createLogoRenderer() {
   if (!logoCanvas) return null;
 
-  const logoShaders = window.VoidTribeLogoShaders;
+  const logoShaders = window.VoidTribeLogoShaders?.();
+  window.VoidTribeLogoShaders = null;
   if (!logoShaders || !logoShaders.VERT || !logoShaders.FRAG) return null;
 
   const logoGl = logoCanvas.getContext("webgl2", {

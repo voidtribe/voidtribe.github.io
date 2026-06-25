@@ -1,4 +1,4 @@
-window.VoidTribeShaders = {
+window.VoidTribeShaders = () => ({
   VERT: `#version 300 es
 in vec2 p;
 void main(){ gl_Position = vec4(p, 0, 1); }`,
@@ -156,4 +156,4 @@ void main(){
     col = vec4(bg, 1.);
   }
 }`
-};
+});
